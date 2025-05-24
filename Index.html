@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Focus Timer</title>
+<style>
+  * {
+    box-sizing: border-box;
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    transition: background-image 1s ease-in-out;
+    color: white;
+  }
+
+  .goal-screen {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 30px;
+    text-align: center;
+  }
+
+  .goal-screen input {
+    padding: 10px;
+    font-size: 18px;
+    width: 80%;
+    max-width: 400px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 8px;
+  }
+
+  .goal-screen button {
+    margin-top: 20px;
+    padding: 12px 25px;
+    font-size: 16px;
+    border: none;
+    background: white;
+    color: black;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .app-container {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.4);
+    text-align: center;
+  }
+
+  .app-container.active {
+    display: flex;
+  }
+
+  h1 {
+    font-size: 28px;
+    margin-bottom: 20px;
+  }
+
+  #timer {
+    font-size: 60px;
+    margin: 20px 0;
+  }
+
+  .controls button {
+    margin: 5px;
+    padding: 10px 16px;
+    font-size: 14px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.3);
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  .controls button:hover {
+    background: rgba(255,255,255,0.6);
+  }
+
+  .quote {
+    font-style: italic;
+    margin-top: 20px;
+    font-size: 16px;
+  }
+
+  .note-box {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 15px;
+    border-radius: 10px;
+    width: 250px;
+    backdrop-filter: blur(4px);
+    color: white;
+    font-size: 14px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+  }
+
+  .note-box h4 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+  }
+
+  .note-box textarea {
+    width: 100%;
+    height: 100px;
+    border: none;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 14px;
+    resize: none;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  .audio-controls {
+    margin-top: 20px;
+  }
+
+  .audio-controls button {
+    padding: 10px 16px;
+    font-size: 14px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.3);
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  .audio-controls button:hover {
+    background: rgba(255,255,255,0.6);
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 767px) {
+    .note-box, .audio-controls {
+      display: none;
+    }
+    #timer {
+      font-size: 44px;
+    }
+    .goal-screen input {
+      width: 95%;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="goal-screen" id="goalScreen">
+  <h2>🌄 What is your main goal today?</h2>
+  <input id="goalInput" placeholder="Type your goal..." />
+  <button onclick="submitGoal()">Start Focus</button>
+</div>
+
+<div class="app-container" id="mainApp">
+  <h1 id="userGoal"></h1>
+
+  <div id="timer">25:00</div>
+
+  <div class="controls">
+    <button onclick="setTimer(300)">5 Min</button>
+    <button onclick="setTimer(600)">10 Min</button>
+    <button onclick="setTimer(1500)">25 Min</button>
+    <button onclick="startTimer()">Start</button>
+    <button onclick="resetTimer()">Reset</button>
+  </div>
+
+  <p id="quote" class="quote">"Stay present. Focus deeply."</p>
+
+  <div class="note-box" id="noteBox">
+    <h4>📝 Note</h4>
+    <textarea id="noteArea" placeholder="Type your note..."></textarea>
+  </div>
+
+  <div class="audio-controls">
+    <button id="audioToggle" onclick="toggleAudio()">🔈 Mute</button>
+  </div>
+
+  <!-- YouTube background music iframe -->
+  <iframe
+    id="bgMusic"
+    width="0" height="0"
+    src="https://www.youtube.com/embed/V1RPi2MYptM?autoplay=1&loop=1&playlist=V1RPi2MYptM&mute=1&controls=0&rel=0&modestbranding=1"
+    frameborder="0"
+    allow="autoplay"
+    allowfullscreen>
+  </iframe>
+</div>
+
+<script>
+  let timeLeft = 1500; // default 25 minutes
+  let timerId = null;
+  const timerDisplay = document.getElementById("timer");
+  const quoteDisplay = document.getElementById("quote");
+
+  const images = [
+    "https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0",
+    "https://images.unsplash.com/photo-1470770841072-f978cf4d019e",
+    "https://images.unsplash.com/photo-1502082553048-f009c37129b9",
+    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
+    "https://images.unsplash.com/photo-1518837695005-2083093ee35b",
+    "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
+    "https://images.unsplash.com/photo-1446034295857-c39f8844fad4",
+    "https://images.unsplash.com/photo-1500375592092-40eb2168fd21",
+    "https://images.unsplash.com/photo-1504198453319-5ce911bafcde",
+    "https://images.unsplash.com/photo-1469474968028-56623f02e42e",
+    "https://images.unsplash.com/photo-1500534623283-312aade485b7",
+    "https://images.unsplash.com/photo-1470770841072-f978cf4d019e",
+    "https://images.unsplash.com/photo-1470770841072-f978cf4d019e",
+    "https://images.unsplash.com/photo-1469474968028-56623f02e42e",
+    "https://images.unsplash.com/photo-1506744038136-46273834b3fb"
+  ];
+
+  let currentBgIndex = 0;
+
+  function rotateBackground() {
+    document.body.style.backgroundImage = `url(${images[currentBgIndex]}?auto=format&fit=crop&w=1920&q=80)`;
+    currentBgIndex = (currentBgIndex + 1) % images.length;
+  }
+
+  // Timer functions
+  function updateTimerDisplay() {
+    let mins = Math.floor(timeLeft / 60);
+    let secs = timeLeft % 60;
+    timerDisplay.textContent = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+
+  function countdown() {
+    if (timeLeft <= 0) {
+      clearInterval(timerId);
+      timerId = null;
+      quoteDisplay.textContent = "⏰ Time's up! Great job staying focused.";
+      return;
+    }
+    timeLeft--;
+    updateTimerDisplay();
+  }
+
+  function startTimer() {
+    if (timerId) return;
+    quoteDisplay.textContent = "Focus deeply...";
+    timerId = setInterval(countdown, 1000);
+  }
+
+  function resetTimer() {
+    clearInterval(timerId);
+    timerId = null;
+    timeLeft = 1500;
+    updateTimerDisplay();
+    quoteDisplay.textContent = '"Stay present. Focus deeply."';
+  }
+
+  function setTimer(seconds) {
+    resetTimer();
+    timeLeft = seconds;
+    updateTimerDisplay();
+  }
+
+  // Goal input handling
+  function submitGoal() {
+    const input = document.getElementById("goalInput");
+    const goal = input.value.trim();
+    if (!goal) return alert("Please enter your goal!");
+    document.getElementById("userGoal").textContent = `🎯 Today's Goal: ${goal}`;
+    document.getElementById("goalScreen").style.display = "none";
+    document.getElementById("mainApp").classList.add("active");
+  }
+
+  // Background music control
+  const bgMusic = document.getElementById("bgMusic");
+  const audioToggle = document.getElementById("audioToggle");
+
+  function toggleAudio() {
+    const iframe = document.getElementById("bgMusic");
+    const iframeWindow = iframe.contentWindow;
+    // We cannot control iframe audio directly due to cross-origin restrictions,
+    // so we'll simulate by muting/unmuting the iframe itself by changing src with mute/unmute param.
+    if (audioToggle.textContent === "🔈 Mute") {
+      // Mute is on, so unmute by reloading iframe without mute param
+      iframe.src = iframe.src.replace("&mute=1", "&mute=0");
+      audioToggle.textContent = "🔇 Unmute";
+    } else {
+      // Mute audio
+      iframe.src = iframe.src.replace("&mute=0", "&mute=1");
+      audioToggle.textContent = "🔈 Mute";
+    }
+  }
+
+  // Device detection for note box and audio controls display
+  function checkDevice() {
+    if (window.innerWidth <= 767) {
+      document.getElementById("noteBox").style.display = "none";
+      document.querySelector(".audio-controls").style.display = "none";
+    } else {
+      document.getElementById("noteBox").style.display = "block";
+      document.querySelector(".audio-controls").style.display = "block";
+    }
+  }
+
+  window.addEventListener("resize", checkDevice);
+
+  // Initial setup
+  window.onload = () => {
+    rotateBackground();
+    setInterval(rotateBackground, 30000);
+    updateTimerDisplay();
+    checkDevice();
+  };
+</script>
+
+</body>
+</html>
